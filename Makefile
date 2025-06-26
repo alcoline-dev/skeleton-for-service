@@ -38,7 +38,6 @@ exec: setup
 
 # Composer Commands
 composer: setup
-	$(DOCKER_EXEC) "composer config --global github-oauth.github.com $(GITHUB_TOKEN)"
 	$(DOCKER_EXEC) "composer $(CMD)"
 
 composer-install: CMD = install
