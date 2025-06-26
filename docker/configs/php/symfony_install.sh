@@ -1,7 +1,7 @@
 #!/bin/sh
 
 
-export $(grep -v '^#' /srv/src/app/.env.install | xargs)
+export $(grep -v '^#' ${WORKDIR}/.env.install | xargs)
 
 install_path=/srv/src/symfony_install
 target_path=${WORKDIR}
