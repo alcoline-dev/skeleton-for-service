@@ -151,7 +151,7 @@ project-git-config:
 		read -p "Enter the git repository url for your new project (or press Enter to skip): " git_url; \
 		echo "${NC}"; \
 		if [ ! -z "$$git_url" ]; then \
-			git remote set-url origin "$$git_url" && git add . && git commit -m "symfony install" && git push --force origin main; \
+			git init && git remote add origin "$$git_url" && git add . && git commit -m "symfony install" && git push --force origin main; \
 			echo "Git initialized with remote $$git_url"; \
 		else \
 			rm -rf ./.git; \
