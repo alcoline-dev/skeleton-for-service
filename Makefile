@@ -3,6 +3,7 @@
 setup:
 	@test -f .env.local || cp .env.local.dist .env.local
 	@test -f MakefileCustom || cp MakefileCustom.dist MakefileCustom
+	@rm -rf MakefileInstall
 	@docker network ls | grep tm || docker network create tm
 
 -include .env.local
@@ -14,9 +15,7 @@ DOCKER_COMPOSE = docker-compose --env-file .env.local
 PHP_BASH = docker exec -it php_$(PROJECT_NAME) /bin/bash
 DOCKER_EXEC = $(PHP_BASH) -c
 
-symfony-i:
-	@test -f .env.install || cp .env.install.dist .env.install
-	docker-compose --env-file .env.install up --build
+symfony-i: install-init
 
 # Docker Compose Commands
 up: setup
@@ -91,5 +90,14 @@ run:
 %:
 	@:
 
+GREEN=\033[0;32m
+BLUE=\033[0;34m
+YELLOW=\033[1;33m
+PURPLE=\033[0;35m
+NC=\033[0m
 
 -include MakefileCustom
+-include MakefileInstall
+
+MakefileInstall:
+	@:

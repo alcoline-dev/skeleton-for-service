@@ -44,3 +44,4 @@
 /logs/nginx/
 /docker/configs/nginx/project.conf
 MakefileCustom
+.DS_Store
