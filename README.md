@@ -19,9 +19,15 @@ and any other variables if needed
 
 ```bash
 make install-init
-```
 
-This will launch an interactive installation wizard with Symfony version selection, optional Git initialization, and create a new project in the `./install` folder.
+Enter Symfony version to install (or press Enter to use latest):
+
+...
+
+Enter the git repository url for your new project (or press Enter to skip):
+```
+#### Warning: if you specify a repository that already contains data, it will be lost. This action is irreversible.
+
 
 ### 3. Profit
 
