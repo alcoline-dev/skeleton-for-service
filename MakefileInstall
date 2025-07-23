@@ -69,7 +69,7 @@ generate-compose:
 	@echo  "";
 
 ensure-env:
-	@if [ ! -f .env.local ]; then cp .env.install.dist .env.install; fi
+	@if [ ! -f .env.install ]; then cp .env.install.dist .env.install; fi
 	@echo  "";
 
 remove-container:
