@@ -15,6 +15,7 @@ PHP_BASH = docker exec -it php_$(PROJECT_NAME) /bin/bash
 DOCKER_EXEC = $(PHP_BASH) -c
 
 symfony-i:
+	@test -f .env.install || cp .env.install.dist .env.install
 	docker-compose --env-file .env.install up --build
 
 # Docker Compose Commands
