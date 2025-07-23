@@ -1,38 +1,30 @@
-# Symfony Docker installer
+# Symfony Docker Installer v.2.0
 
-## About 
-Symfony 6.3.*@dev
-php-fpm 8.1
-Mysql latest
-nginx latest
+## About
 
-## Installation
-### Step 1
-Copy `.env.install.dist` file to `.env.install`
+- Symfony (version defined interactively)
+- PHP-FPM 8.4
+- MySQL 8
+- nginx (latest)
 
-Change `PROJECT_NAME` in `.env.install`
+## Quick Start
 
-### Step 2
-```console
-docker-compose --env-file .env.install up --build
+### 1. Init project
+Copy the `.env.install.dist` file to `.env.install`
+
+Change the `PROJECT_NAME` variable in `.env.install`,
+and any other variables if needed
+
+### 2. Run installer
+
+```bash
+make install-init
 ```
-OR
-```console
-/bin/bash project.sh -i
-```
 
-This may take a few minutes. Wait for completion.
+This will launch an interactive installation wizard with Symfony version selection, optional Git initialization, and create a new project in the `./install` folder.
 
-### Step 3
-Profit
+### 3. Profit
 
-## Use
+See all available make targets in [Makefile.md](Makefile.md)
 
-For use 
-```console
-docker-compose --env-file .env.local up
-```
-OR
-```console
-/bin/bash project.sh
-```
+You can define your own commands in [MakefileCustom](MakefileCustom)
