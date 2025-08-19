@@ -42,7 +42,7 @@ install-init:
 	make project-git-config
 
 	@echo "${GREEN} Install complete successfully ${NC}"
-
+	make clear-install
 
 install-welcome:
 	@printf "${GREEN}%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s${NC}" \
@@ -154,7 +154,6 @@ generate-files:
 project-move:
 	@cp -rf ./install/ ./
 	@rm -rf ./install
-#	@rm -f .env.install .env.install.dist
 
 configure-composer:
 	$(DOCKER_EXEC) 'apt-get update && apt-get install -y jq curl && \
