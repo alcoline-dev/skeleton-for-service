@@ -26,19 +26,20 @@ install-init:
 	make generate-files
 	@echo "${BLUE} Step 10: Move to project folder ${NC}"
 	make project-move
-	@echo "${BLUE} Step 11: GIT config ${NC}"
-	make project-git-config
 
 	make up-d
 
-	@echo "${BLUE} Step 12: Configure composer.json ${NC}"
+	@echo "${BLUE} Step 11: Configure composer.json ${NC}"
 	make configure-composer
 
-	@echo "${BLUE} Step 13: RPC API ${NC}"
+	@echo "${BLUE} Step 12: RPC API ${NC}"
 	make add-rpc-api
 
-	@echo "${BLUE} Step 14: RPC SDK ${NC}"
+	@echo "${BLUE} Step 13: RPC SDK ${NC}"
 	make add-rpc-sdk
+
+	@echo "${BLUE} Step 14: GIT config ${NC}"
+	make project-git-config
 
 	@echo "${GREEN} Install complete successfully ${NC}"
 
@@ -153,9 +154,13 @@ generate-files:
 project-move:
 	@cp -rf ./install/ ./
 	@rm -rf ./install
-	@rm -f .env.install .env.install.dist
+#	@rm -f .env.install .env.install.dist
 
 configure-composer:
+	$(DOCKER_EXEC) 'apt-get update && apt-get install -y jq curl && \
+    	curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/bin/yq && \
+    	chmod +x /usr/bin/yq && \
+    	yq --version && jq --version';
 	@echo "${BLUE} Configure composer ${NC}"
 	$(DOCKER_EXEC) "composer require php '^8.4' --no-update"
 	$(DOCKER_EXEC) "composer config extra.symfony.allow-contrib true --json"
@@ -169,7 +174,16 @@ add-rpc-api:
 		echo "JSON_RPC_KEY=${PROJECT_NAME}_token" >> .env.local; \
 		echo "JSON_RPC_TOKEN=test" >> .env.local; \
 		$(DOCKER_EXEC) "composer require -n ufo-tech/json-rpc-bundle"; \
-		$(patch-rpc-config) \
+		$(DOCKER_EXEC) 'set -e; \
+        	f="config/packages/ufo_json_rpc.yaml"; \
+        	[ -f "$$f" ] || { echo "skip: $$f not found"; exit 0; }; \
+        	yq -i \
+        	  ".ufo_json_rpc.docs.validations.symfony_asserts = true | \
+        	   .ufo_json_rpc.docs.project_name = \"${PROJECT_NAME}\" | \
+        	   .ufo_json_rpc.security.token_name = \"%env(resolve:JSON_RPC_KEY)%\" | \
+        	   .ufo_json_rpc.security.clients_tokens = [\"%env(resolve:JSON_RPC_TOKEN)%\"]" \
+        	  "$$f"; \
+        	echo "patched: $$f"'; \
 	fi
 
 add-rpc-sdk:
@@ -183,7 +197,7 @@ add-rpc-sdk:
 			set -e; \
 			f=config/packages/json_rpc_sdk.yaml; \
 			[ -f "$$f" ] || { echo "skip: $$f"; exit 0; }; \
-			yq -y -i ".json_rpc_sdk.vendors = []" "$$f"; \
+			yq -i ".json_rpc_sdk.vendors = []" "$$f"; \
 			echo "patched: $$f"'; \
 		while :; do \
 			echo; read -p "Add RPC API vendor? (y/n)[n]: " add; [ -z "$$add" ] && add=n; case "$$add" in y|Y) ;; *) break ;; esac; \
@@ -202,7 +216,7 @@ add-rpc-sdk:
 				set -e; \
 				f=config/packages/json_rpc_sdk.yaml; \
 				[ -f "$$f" ] || { echo "skip: $$f"; exit 0; }; \
-				yq -y -i ".json_rpc_sdk.vendors += [{\"name\": \"$$VNAME\", \"url\": \"%env(resolve:$$HOST)%\", \"token_key\": \"%env(resolve:$$KEY)%\", \"token\": \"%env(resolve:$$TOKEN)%\"}]" "$$f"; \
+				yq -i ".json_rpc_sdk.vendors += [{\"name\": \"$$VNAME\", \"url\": \"%env(resolve:$$HOST)%\", \"token_key\": \"%env(resolve:$$KEY)%\", \"token\": \"%env(resolve:$$TOKEN)%\"}]" "$$f"; \
 				echo "patched: $$f"'; \
 		done; \
 		$(DOCKER_EXEC) 'composer auto-scripts'; \
@@ -210,18 +224,20 @@ add-rpc-sdk:
 		echo "json_rpc_sdk.yaml updated"; \
 	fi
 
-
-
-patch-rpc-config:
-	@$(DOCKER_EXEC) 'set -e; \
-	f="config/packages/ufo_json_rpc.yaml"; \
-	[ -f "$$f" ] || { echo "skip: $$f not found"; exit 0; }; \
-	yq -y -i \
-	  ".ufo_json_rpc.docs.validations.symfony_asserts = true | \
-	   .ufo_json_rpc.docs.project_name = \"${PROJECT_NAME}\" | \
-	   .ufo_json_rpc.security.token_name = \"%env(resolve:JSON_RPC_KEY)%\" | \
-	   .ufo_json_rpc.security.clients_tokens = [\"%env(resolve:JSON_RPC_TOKEN)%\"]" \
-	  "$$f"; \
-	echo "patched: $$f"'
-
+project-git-config:
+	@sh -c '\
+		echo "${YELLOW_BG}"; \
+		echo "Warning: if you specify a repository that already contains data, it will be lost. This action is irreversible.${NC}"; \
+		echo "${PURPLE}"; \
+		read -p "Enter the git repository url for your new project (or press Enter to skip): " git_url; \
+		echo "${NC}"; \
+		rm -rf ./.git; \
+		if [ ! -z "$$git_url" ]; then \
+			git init && git remote add origin "$$git_url" && git add . && git commit -m "symfony install" && git push --force origin main; \
+			echo "Git initialized with remote $$git_url"; \
+		else \
+			echo "Git not initialized"; \
+		fi; \
+		echo ""; \
+	'
 

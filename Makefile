@@ -3,7 +3,7 @@
 setup:
 	@test -f .env.local || cp .env.local.dist .env.local
 	@test -f MakefileCustom || cp MakefileCustom.dist MakefileCustom
-	@rm -rf MakefileInstall
+	@#rm -rf MakefileInstall
 	@docker network ls | grep tm || docker network create tm
 
 -include .env.local
