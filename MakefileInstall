@@ -29,8 +29,19 @@ install-init:
 	@echo "${BLUE} Step 11: GIT config ${NC}"
 	make project-git-config
 
-	@echo "${GREEN} Install complete successfully ${NC}"
 	make up-d
+
+	@echo "${BLUE} Step 12: Configure composer.json ${NC}"
+	make configure-composer
+
+	@echo "${BLUE} Step 13: RPC API ${NC}"
+	make add-rpc-api
+
+	@echo "${BLUE} Step 14: RPC SDK ${NC}"
+	make add-rpc-sdk
+
+	@echo "${GREEN} Install complete successfully ${NC}"
+
 
 install-welcome:
 	@printf "${GREEN}%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s${NC}" \
@@ -103,9 +114,9 @@ git-config:
 
 symfony-new:
 	@if [ -f .env.install.override ]; then \
-	    docker exec symfony_${PROJECT_NAME}_install sh -c "symfony new /app/install --version=\$$SYMFONY_VERSION_INSTALL --webapp"; \
+	    docker exec -t symfony_${PROJECT_NAME}_install sh -c "symfony new /app/install --version=\$$SYMFONY_VERSION_INSTALL --webapp"; \
 	else \
-	    docker exec symfony_${PROJECT_NAME}_install sh -c "symfony new /app/install --version=\$$SYMFONY_VERSION_INSTALL --webapp"; \
+	    docker exec -t symfony_${PROJECT_NAME}_install sh -c "symfony new /app/install --version=\$$SYMFONY_VERSION_INSTALL --webapp"; \
 	fi
 	@echo  "";
 
@@ -135,27 +146,82 @@ generate-files:
 		done < $$envfile \
 	'
 	cat ./docker/configs/php/.env.default >> ./install/.env.local
-	echo  "DATABASE_URL=\"mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db_mysql/${MYSQL_DATABASE}?serverVersion=8&charset=utf8mb4\"" >> ./install/.env.local
+	echo "DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db_mysql/${MYSQL_DATABASE}?serverVersion=8&charset=utf8mb4" >> ./install/.env.local
 	cat ./.gitignore >> ./install/.gitignore
+	cp ./install/.env.local ./install/.env.local.dist
 
 project-move:
 	@cp -rf ./install/ ./
 	@rm -rf ./install
 	@rm -f .env.install .env.install.dist
 
-project-git-config:
-	@sh -c '\
-		echo "${YELLOW_BG}"; \
-		echo "Warning: if you specify a repository that already contains data, it will be lost. This action is irreversible.${NC}"; \
-		echo "${PURPLE}"; \
-		read -p "Enter the git repository url for your new project (or press Enter to skip): " git_url; \
-		echo "${NC}"; \
-		rm -rf ./.git; \
-		if [ ! -z "$$git_url" ]; then \
-			git init && git remote add origin "$$git_url" && git add . && git commit -m "symfony install" && git push --force origin main; \
-			echo "Git initialized with remote $$git_url"; \
-		else \
-			echo "Git not initialized"; \
-		fi; \
-		echo ""; \
-	'
+configure-composer:
+	@echo "${BLUE} Configure composer ${NC}"
+	$(DOCKER_EXEC) "composer require php '^8.4' --no-update"
+	$(DOCKER_EXEC) "composer config extra.symfony.allow-contrib true --json"
+	$(DOCKER_EXEC) "composer config extra.symfony.endpoint --json '[\"https://api.github.com/repos/ufo-tech/recipes/contents/index.json?ref=main\",\"flex://defaults\"]'"
+
+add-rpc-api:
+	@echo  "${PURPLE}"
+	@read -p "Does the project require an RPC API? (y/n)[y]: " api; \
+	echo  "${NC}"; \
+	if [ -z "$$api" ] || [ "$$api" = "Y" ] || [ "$$api" = "y" ]; then \
+		echo "JSON_RPC_KEY=${PROJECT_NAME}_token" >> .env.local; \
+		echo "JSON_RPC_TOKEN=test" >> .env.local; \
+		$(DOCKER_EXEC) "composer require -n ufo-tech/json-rpc-bundle"; \
+		$(patch-rpc-config) \
+	fi
+
+add-rpc-sdk:
+	@echo "${PURPLE}"
+	@read -p "Does the project require an SDK? (y/n)[n]: " sdk; \
+	echo "${NC}"; \
+	if [ "$$sdk" = "Y" ] || [ "$$sdk" = "y" ]; then \
+	  	$(DOCKER_EXEC) 'jq ".autoload[\"psr-4\"][\"App\\\\SDK\\\\\"] = \"sdk/\" | ." composer.json > composer.json.tmp && mv composer.json.tmp composer.json'; \
+		$(DOCKER_EXEC) 'composer require -n ufo-tech/json-rpc-sdk-bundle --no-scripts'; \
+		docker exec php_$(PROJECT_NAME) /bin/bash -c '\
+			set -e; \
+			f=config/packages/json_rpc_sdk.yaml; \
+			[ -f "$$f" ] || { echo "skip: $$f"; exit 0; }; \
+			yq -y -i ".json_rpc_sdk.vendors = []" "$$f"; \
+			echo "patched: $$f"'; \
+		while :; do \
+			echo; read -p "Add RPC API vendor? (y/n)[n]: " add; [ -z "$$add" ] && add=n; case "$$add" in y|Y) ;; *) break ;; esac; \
+			read -p "vendor_name: " vname; \
+			read -p "vendor_host: " vhost; \
+			read -p "vendor_api_key: " vkey; \
+			read -p "vendor_token: " vtok; \
+			VUP=$$(printf "%s" "$$vname" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/_/g; s/_\{2,\}/_/g; s/^_\|_$$//g'); \
+			echo "$${VUP}_API_HOST=$$vhost" >> .env.local; \
+			echo "$${VUP}_API_KEY=$$vkey"   >> .env.local; \
+			echo "$${VUP}_API_TOKEN=$$vtok" >> .env.local; \
+			echo "$${VUP}_API_HOST=$$vhost" >> .env.local.dist; \
+			echo "$${VUP}_API_KEY=$$vkey"   >> .env.local.dist; \
+			echo "$${VUP}_API_TOKEN=$$vtok" >> .env.local.dist; \
+			docker exec -e VNAME="$$vname" -e HOST="$${VUP}_API_HOST" -e KEY="$${VUP}_API_KEY" -e TOKEN="$${VUP}_API_TOKEN" php_$(PROJECT_NAME) /bin/bash -c '\
+				set -e; \
+				f=config/packages/json_rpc_sdk.yaml; \
+				[ -f "$$f" ] || { echo "skip: $$f"; exit 0; }; \
+				yq -y -i ".json_rpc_sdk.vendors += [{\"name\": \"$$VNAME\", \"url\": \"%env(resolve:$$HOST)%\", \"token_key\": \"%env(resolve:$$KEY)%\", \"token\": \"%env(resolve:$$TOKEN)%\"}]" "$$f"; \
+				echo "patched: $$f"'; \
+		done; \
+		$(DOCKER_EXEC) 'composer auto-scripts'; \
+		$(DOCKER_EXEC) 'bin/console ufo:sdk:generate'; \
+		echo "json_rpc_sdk.yaml updated"; \
+	fi
+
+
+
+patch-rpc-config:
+	@$(DOCKER_EXEC) 'set -e; \
+	f="config/packages/ufo_json_rpc.yaml"; \
+	[ -f "$$f" ] || { echo "skip: $$f not found"; exit 0; }; \
+	yq -y -i \
+	  ".ufo_json_rpc.docs.validations.symfony_asserts = true | \
+	   .ufo_json_rpc.docs.project_name = \"${PROJECT_NAME}\" | \
+	   .ufo_json_rpc.security.token_name = \"%env(resolve:JSON_RPC_KEY)%\" | \
+	   .ufo_json_rpc.security.clients_tokens = [\"%env(resolve:JSON_RPC_TOKEN)%\"]" \
+	  "$$f"; \
+	echo "patched: $$f"'
+
+
