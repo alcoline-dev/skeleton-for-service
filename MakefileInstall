@@ -30,8 +30,8 @@ install-init:
 	make up-d
 
 	@echo "${BLUE} Step 11: Configure composer.json ${NC}"
-	make configure-folders
 	make configure-composer
+	make configure-folders
 
 	@echo "${BLUE} Step 12: RPC API ${NC}"
 	make add-rpc-api
@@ -182,7 +182,6 @@ configure-folders:
         yq -i \
           ".doctrine.dbal.logging = false | \
            .doctrine.dbal.profiling = false | \
-           .doctrine.dbal.use_savepoints = false | \
            .doctrine.dbal.profiling_collect_backtrace = false" \
           "$$f"; \
         echo "patched: $$f"';
