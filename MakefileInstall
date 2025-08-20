@@ -39,6 +39,7 @@ install-init:
 	make add-rpc-sdk
 
 	@echo "${BLUE} Step 14: GIT config ${NC}"
+	cp .env.local .env.local.dist
 	make project-git-config
 
 	@echo "${GREEN} Install complete successfully ${NC}"
@@ -121,15 +122,14 @@ symfony-new:
 	fi
 	@echo  "";
 
-
-
 generate-files:
 	rm -rf ./install/.git
 	rm -rf ./install/compose.yaml
 	rm -rf ./install/compose.override.yaml
+	rm -rf ./install/.env.dev
+	rm -rf ./install/.env.test
 	rm -rf ./.env.install.override
 	rm -rf ./docker-compose.install.yaml
-
 
 	echo  "# Copy from project env file" >> ./install/.env.local
 	cat .env.install >> ./install/.env.local
@@ -146,10 +146,9 @@ generate-files:
 			fi; \
 		done < $$envfile \
 	'
-	cat ./docker/configs/php/.env.default >> ./install/.env.local
+	echo  "" >> ./install/.env.local
 	echo "DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db_mysql/${MYSQL_DATABASE}?serverVersion=8&charset=utf8mb4" >> ./install/.env.local
 	cat ./.gitignore >> ./install/.gitignore
-	cp ./install/.env.local ./install/.env.local.dist
 
 project-move:
 	@cp -rf ./install/ ./
@@ -164,12 +163,17 @@ configure-composer:
 	$(DOCKER_EXEC) "composer require php '^8.4' --no-update"
 	$(DOCKER_EXEC) "composer config extra.symfony.allow-contrib true --json"
 	$(DOCKER_EXEC) "composer config extra.symfony.endpoint --json '[\"https://api.github.com/repos/ufo-tech/recipes/contents/index.json?ref=main\",\"flex://defaults\"]'"
+	$(DOCKER_EXEC) "composer remove twig/extra-bundle symfony/ux-turbo symfony/stimulus-bundle symfony/form symfony/asset symfony/asset-mapper --no-scripts"
+	$(DOCKER_EXEC) "composer require ufo-tech/doctrine-behaviors ufo-tech/doctrine-helper scienta/doctrine-json-functions --no-scripts"
+	$(DOCKER_EXEC) 'composer auto-scripts'
 
 add-rpc-api:
 	@echo  "${PURPLE}"
 	@read -p "Does the project require an RPC API? (y/n)[y]: " api; \
 	echo  "${NC}"; \
 	if [ -z "$$api" ] || [ "$$api" = "Y" ] || [ "$$api" = "y" ]; then \
+		$(DOCKER_EXEC) 'mkdir -p ./src/API && echo "" > ./src/API/.gitignore'; \
+		echo  "" >> .env.local; \
 		echo "JSON_RPC_KEY=${PROJECT_NAME}_token" >> .env.local; \
 		echo "JSON_RPC_TOKEN=test" >> .env.local; \
 		$(DOCKER_EXEC) "composer require -n ufo-tech/json-rpc-bundle"; \
@@ -191,6 +195,7 @@ add-rpc-sdk:
 	echo "${NC}"; \
 	if [ "$$sdk" = "Y" ] || [ "$$sdk" = "y" ]; then \
 	  	$(DOCKER_EXEC) 'jq ".autoload[\"psr-4\"][\"App\\\\SDK\\\\\"] = \"sdk/\" | ." composer.json > composer.json.tmp && mv composer.json.tmp composer.json'; \
+		$(DOCKER_EXEC) 'mkdir -p ./sdk && echo "" > ./sdk/.gitignore'; \
 		$(DOCKER_EXEC) 'composer require -n ufo-tech/json-rpc-sdk-bundle --no-scripts'; \
 		docker exec php_$(PROJECT_NAME) /bin/bash -c '\
 			set -e; \
@@ -205,12 +210,10 @@ add-rpc-sdk:
 			read -p "vendor_api_key: " vkey; \
 			read -p "vendor_token: " vtok; \
 			VUP=$$(printf "%s" "$$vname" | tr '[:lower:]' '[:upper:]' | sed 's/[^A-Z0-9]/_/g; s/_\{2,\}/_/g; s/^_\|_$$//g'); \
+			echo  "" >> .env.local; \
 			echo "$${VUP}_API_HOST=$$vhost" >> .env.local; \
 			echo "$${VUP}_API_KEY=$$vkey"   >> .env.local; \
 			echo "$${VUP}_API_TOKEN=$$vtok" >> .env.local; \
-			echo "$${VUP}_API_HOST=$$vhost" >> .env.local.dist; \
-			echo "$${VUP}_API_KEY=$$vkey"   >> .env.local.dist; \
-			echo "$${VUP}_API_TOKEN=$$vtok" >> .env.local.dist; \
 			docker exec -e VNAME="$$vname" -e HOST="$${VUP}_API_HOST" -e KEY="$${VUP}_API_KEY" -e TOKEN="$${VUP}_API_TOKEN" php_$(PROJECT_NAME) /bin/bash -c '\
 				set -e; \
 				f=config/packages/json_rpc_sdk.yaml; \
