@@ -173,6 +173,7 @@ configure-folders:
 	$(DOCKER_EXEC) 'mkdir -p ./src/CQRS'
 	$(DOCKER_EXEC) 'mkdir -p ./src/CQRS/Commands && echo "" > ./src/CQRS/Commands/.gitignore'
 	$(DOCKER_EXEC) 'mkdir -p ./src/CQRS/Queries && echo "" > ./src/CQRS/Queries/.gitignore';
+	$(DOCKER_EXEC) 'mkdir -p ./src/Services && echo "" > ./src/Services/.gitignore';
 
 
 add-rpc-api:
