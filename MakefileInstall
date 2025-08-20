@@ -193,7 +193,9 @@ add-rpc-api:
 	@read -p "Does the project require an RPC API? (y/n)[y]: " api; \
 	echo  "${NC}"; \
 	if [ -z "$$api" ] || [ "$$api" = "Y" ] || [ "$$api" = "y" ]; then \
-		$(DOCKER_EXEC) 'mkdir -p ./src/API && echo "" > ./src/API/.gitignore'; \
+		$(DOCKER_EXEC) 'mkdir -p ./src/API'; \
+		$(DOCKER_EXEC) 'mkdir -p ./src/API/DTO && echo "" > ./src/API/DTO/.gitignore'; \
+		$(DOCKER_EXEC) 'mkdir -p ./src/API/Convertors && echo "" > ./src/API/Convertors/.gitignore'; \
 		echo  "" >> .env.local; \
 		echo "JSON_RPC_KEY=${PROJECT_NAME}_token" >> .env.local; \
 		echo "JSON_RPC_TOKEN=test" >> .env.local; \
