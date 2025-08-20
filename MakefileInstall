@@ -161,6 +161,7 @@ configure-composer:
     	yq --version && jq --version';
 	@echo "${BLUE} Configure composer ${NC}"
 	$(DOCKER_EXEC) "composer require php '^8.4' --no-update"
+	$(DOCKER_EXEC) "composer require doctrine/dbal: '^4'"
 	$(DOCKER_EXEC) "composer config extra.symfony.allow-contrib true --json"
 	$(DOCKER_EXEC) "composer config extra.symfony.endpoint --json '[\"https://api.github.com/repos/ufo-tech/recipes/contents/index.json?ref=main\",\"flex://defaults\"]'"
 	$(DOCKER_EXEC) "composer remove twig/extra-bundle symfony/ux-turbo symfony/stimulus-bundle symfony/form symfony/asset symfony/asset-mapper --no-scripts"
