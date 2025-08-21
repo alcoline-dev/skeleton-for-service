@@ -83,6 +83,12 @@ generate-compose:
 	@echo "    volumes:" >> docker-compose.install.yaml
 	@echo "      - ./:${WORKDIR}" >> docker-compose.install.yaml
 	@echo  "";
+	$(DOCKER_EXEC) 'sed -i \
+	  -e "s/^\([[:space:]]*\)mysql:$$/\1mysql_${PROJECT_NAME}:/g" \
+	  -e "s/^\([[:space:]]*-\s*\)mysql$$/\1mysql_${PROJECT_NAME}/g" \
+	  -e "s/^\([[:space:]]*\)nginx:$$/\1nginx_${PROJECT_NAME}:/g" \
+	  -e "s/^\([[:space:]]*-\s*\)nginx$$/\1nginx_${PROJECT_NAME}/g" \
+	  ${WORKDIR}/docker-compose.yaml'
 
 ensure-env:
 	@if [ ! -f .env.install ]; then cp .env.install.dist .env.install; fi
@@ -148,7 +154,7 @@ generate-files:
 		done < $$envfile \
 	'
 	echo  "" >> ./install/.env.local
-	echo "DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@db_mysql/${MYSQL_DATABASE}?serverVersion=8&charset=utf8mb4" >> ./install/.env.local
+	echo "DATABASE_URL=mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql_${PROJECT_NAME}/${MYSQL_DATABASE}?serverVersion=8&charset=utf8mb4" >> ./install/.env.local
 	cat ./.gitignore >> ./install/.gitignore
 
 project-move:
