@@ -82,6 +82,10 @@ migrations-migrate: symfony
 migrations-migrate-n: EXEC = doctrine:migrations:migrate -n
 migrations-migrate-n: symfony
 
+migrations-d: migrations-diff
+migrations-m: migrations-migrate
+migrations-mn: migrations-migrate-n
+
 run: EXEC = "$(filter-out $@,$(MAKECMDGOALS))"
 run:
 	@if [ -z "$(EXEC)" ]; then \
