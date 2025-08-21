@@ -173,6 +173,7 @@ configure-composer:
 	$(DOCKER_EXEC) "composer config extra.symfony.endpoint --json '[\"https://api.github.com/repos/ufo-tech/recipes/contents/index.json?ref=main\",\"flex://defaults\"]'"
 	$(DOCKER_EXEC) "composer remove twig/extra-bundle symfony/ux-turbo symfony/stimulus-bundle symfony/form symfony/asset symfony/asset-mapper --no-scripts"
 	$(DOCKER_EXEC) "composer require ufo-tech/doctrine-behaviors ufo-tech/doctrine-helper scienta/doctrine-json-functions --no-scripts"
+	$(DOCKER_EXEC) 'composer config scripts.test "@putenv APP_ENV=test" "php vendor/bin/phpunit"'
 	$(DOCKER_EXEC) 'composer auto-scripts'
 
 configure-folders:
@@ -203,7 +204,7 @@ add-rpc-api:
 		$(DOCKER_EXEC) 'mkdir -p ./src/API/DTO && echo "" > ./src/API/DTO/.gitignore'; \
 		$(DOCKER_EXEC) 'mkdir -p ./src/API/Convertors && echo "" > ./src/API/Convertors/.gitignore'; \
 		echo  "" >> .env.local; \
-		echo "JSON_RPC_KEY=${PROJECT_NAME}_token" >> .env.local; \
+		echo "JSON_RPC_KEY=${PROJECT_NAME}-token" >> .env.local; \
 		echo "JSON_RPC_TOKEN=test" >> .env.local; \
 		$(DOCKER_EXEC) "composer require -n ufo-tech/json-rpc-bundle"; \
 		$(DOCKER_EXEC) 'set -e; \
