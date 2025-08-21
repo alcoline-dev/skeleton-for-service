@@ -184,15 +184,22 @@ configure-folders:
 	$(DOCKER_EXEC) 'cp -rf ./docker/configs/php/src/* ./src';
 	$(DOCKER_EXEC) 'rm -rf ./docker/configs/php';
 	$(DOCKER_EXEC) 'set -e; \
-        f="config/packages/doctrine.yaml"; \
-        [ -f "$$f" ] || { echo "skip: $$f not found"; exit 0; }; \
-        yq -i \
-          ".doctrine.dbal.logging = false | \
-           .doctrine.dbal.profiling = false | \
-           .doctrine.dbal.profiling_collect_backtrace = false" \
-          "$$f"; \
-        echo "patched: $$f"';
-
+      f="config/packages/doctrine.yaml"; \
+      [ -f "$$f" ] || { echo "skip: $$f not found"; exit 0; }; \
+      yq -i "( \
+        .doctrine.dbal.logging = false | \
+        .doctrine.dbal.profiling = false | \
+        .doctrine.dbal.profiling_collect_backtrace = false | \
+        .doctrine.orm.dql.string_functions = {} | \
+        .doctrine.orm.dql.string_functions.JSON_EXTRACT = \"Scienta\\DoctrineJsonFunctions\\Query\\AST\\Functions\\Mysql\\JsonExtract\" | \
+        .doctrine.orm.dql.string_functions.JSON_SEARCH  = \"Scienta\\DoctrineJsonFunctions\\Query\\AST\\Functions\\Mysql\\JsonSearch\"  | \
+        .doctrine.orm.dql.string_functions.JSON_CONTAINS= \"Scienta\\DoctrineJsonFunctions\\Query\\AST\\Functions\\Mysql\\JsonContains\"| \
+        .doctrine.orm.dql.string_functions.JSON_KEYS    = \"Scienta\\DoctrineJsonFunctions\\Query\\AST\\Functions\\Mysql\\JsonKeys\"    | \
+        .doctrine.orm.dql.string_functions.JSON_LENGTH  = \"Scienta\\DoctrineJsonFunctions\\Query\\AST\\Functions\\Mysql\\JsonLength\"  | \
+        .doctrine.orm.dql.string_functions.JSON_UNQUOTE = \"Scienta\\DoctrineJsonFunctions\\Query\\AST\\Functions\\Mysql\\JsonUnquote\" | \
+        .doctrine.orm.dql.string_functions.JSON_QUOTE   = \"Scienta\\DoctrineJsonFunctions\\Query\\AST\\Functions\\Mysql\\JsonQuote\" \
+      )" "$$f"; \
+      echo "patched: $$f"'
 
 
 add-rpc-api:
